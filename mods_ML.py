@@ -6,14 +6,14 @@
 #       Step2：数据标准化处理，根据患者ID划分训练集测试集，并运用Lightbgm方法训练
 #       Step3：找出敏感性和特异性相差最小的点即为最优分类阈值，在本项目中并没用到此项计算方法，所以设置默认值为50
 #       Step4：根据预测概率与最优分类阈值（cut off值）对患者进行生死预测，并计算预测结果的各项指标（如需要置信区间，则继续运行程序）
-# 程序运行结果：输出预测结果的各项指标（如需要置信区间，则继续运行程序）
+# 程序运行结果：输出预测结果的各项指标
 #
 # DataFile：数据为动态处理方法后得到的结果
-#   p_1_0_1.csv （此处文件较多，就不一一列举，只拿出一个当例子）
+#  
 # Output：
 #        eva_comm:预测结果的各项指标
 #
-# v1.0 2021/6/30
+# v1.0 2022/5/12
 
 
 
@@ -129,18 +129,7 @@ x_test_group=x_test.iloc[:,0];
 x_test=x_test.iloc[:,1:x_test.shape[1]-1]
 
 
-#comm = lgb.LGBMClassifier()
-
-#comm = MLPClassifier()
-#comm = RandomForestClassifier()
-#comm = LogisticRegression()
-#comm = lgb.LGBMClassifier()
-# print('svm pro ')
-# comm = svm.SVC(probability=True)
-# # comm = ensemble.AdaBoostClassifier(learning_rate =0.1, n_estimators=500)
-# a=0.2
-# comm = GNB=GaussianNB(priors=[a,1-a])
-comm = neighbors.KNeighborsClassifier()
+comm = lgb.LGBMClassifier()
 
 
 comm.fit(x_train_for_vail ,y_train_for_vail)
@@ -167,23 +156,6 @@ blo_comm_Pre = blo(pro_comm_Pre,position)  ##敏感性和特异性相差最小�
 
 eva_comm = evaluating_indicator(y_true=y_true, y_test=blo_comm_Pre, y_test_value=pro_comm_Pre)
 print(eva_comm)  ##常规计算
-
-
-# importances = zip(comtest.iloc[1:,1:comtest.shape[1]-1], comm.booster_.feature_importance(importance_type='gain'))
-# for f in importances:
-#     print(f)
-# feature_imp = pd.DataFrame(sorted(zip(comm.feature_importances_, comtest.iloc[1:,comtest.shape[1]-1])), columns=['Value', 'Feature'])
-# plt.figure()
-# plt.figure(figsize=(200, 100))
-# sns.barplot(x="Value", y="Feature", data=feature_imp.sort_values(by="Value", ascending=False))
-# plt.title('LightGBM Features (avg over folds)')
-# plt.tight_layout()
-# plt.show()
-# # lgb.plot_importance(comm.booster_, importance_type='gain',show_values = False)
-# lgb.plot_importance(comm.booster_, importance_type='gain')
-# plt.show()
-
-
 
 
 
@@ -225,7 +197,7 @@ sorted_TPR_scores = np.array(EVA_TPR_CI); sorted_TPR_scores.sort()
 sorted_TNR_scores = np.array(EVA_TNR_CI); sorted_TNR_scores.sort()
 
 
-############
+
 
 
 # Computing the lower and upper bound of the 90% confidence interval
@@ -240,32 +212,3 @@ print("Confidence interval for the MCC: [{:0.6f} - {:0.6}]".format(sorted_MCC_sc
 print("Confidence interval for the TNR: [{:0.6f} - {:0.6}]".format(sorted_TNR_scores[int(0.025 * len(sorted_TNR_scores))], sorted_TNR_scores[int(0.975 * len(sorted_TNR_scores))]))
 print("Confidence interval for the TPR: [{:0.6f} - {:0.6}]".format(sorted_TPR_scores[int(0.025 * len(sorted_TPR_scores))], sorted_TPR_scores[int(0.975 * len(sorted_TPR_scores))]))
 ##################################################################################
-# # # # #可解释性分析
-# import shap
-# # #shap.initjs()#jupyter notebook上用
-# explainer = shap.TreeExplainer(comm)
-# shap_values = explainer.shap_values(x_train_for_vail.iloc[:,:])  #！！
-# # 个体中哪些特征对预测结果起了什么作用做分析
-# # shap.force_plot(explainer.expected_value[1], shap_values[1][0,:], x_train_for_vail.iloc[0,:],matplotlib=True)
-# # 将上个图换个方向，并将多人的预测分析拼接起来  需要在jupyter notebook上绘制，且载入shap后要加上shap.initjs()命令保证正常出图
-# # 该图可用来分析随时间变化某患者参数对预警影响的变化   
-# # 如果这是一个人的话，患者随着时间增加，气管插管需求也在增加，表面原因是gcsverbal的数据变化
-
-# # shap.force_plot(explainer.expected_value[1], shap_values[1][:1000,:], x_train_for_vail.iloc[:1000,:])
-# # # # 在数据整体上对参数什么样的值对预测有什么影响做分析（用于多分类，查看不同参数对不同类别的贡献程度）
-# shap.summary_plot(shap_values[1], x_train_for_vail) #散点图(权重)
-
-# # shap.summary_plot(shap_values[1], x_train_for_vail, plot_type="bar") #条形图（权重）
-
-# # #参数之间相互作用的shap图
-# shap_interaction_values = explainer.shap_interaction_values(x_train_for_vail.iloc[:20000,:])
-# # shap.summary_plot(shap_interaction_values, x_train_for_vail,max_display=4 )
-# # #shap依赖图：显示了模型输出如何随特征值变化。请注意，每个点都是一个人，并且单个特征值的垂直方向色散是由模型中的交互作用引起的
-# # shap.dependence_plot(("age", "gender_1"),shap_interaction_values, x_train_for_vail.iloc[:20000,:]) #限制行数要与shap_values的一致
-# shap.dependence_plot("heartrate_1", shap_values[1], x_train_for_vail.iloc[:20000,:])  #或者只输入一个参数，让机器自己选
-# # #量化权重占比
-# # print("Features sorted by their score:") 
-# # print(sorted(zip(map(lambda x:round(x,4),comm.feature_importances_),list(comtest)),reverse=True)) 
-# # z=pd.DataFrame(data=list(map(lambda x:round(x,4),comm.feature_importances_)),index=list(comtest.iloc[:,1:comtest.shape[1]-1])) 
-# # z.columns=['value'] 
-# # z.sort_values(by='value', ascending=True, inplace=True,axis=0) 
